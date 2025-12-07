@@ -675,14 +675,20 @@ export default function GanttCleanings({
         </div>
       </div>
 
-      {selectedCleaning && (
-        <CleaningDetailsDialog
-          cleaning={selectedCleaning}
-          open={detailsOpen}
-          onOpenChange={(o) => setDetailsOpen(o)}
-          onUpdate={onUpdateCleanings || (() => {})}
-        />
-      )}
+          {selectedCleaning && (
+            <CleaningDetailsDialog
+              cleaning={{
+                ...selectedCleaning,
+                property: {
+                  ...selectedCleaning.property,
+                  room_number: selectedCleaning.property.room_number ?? null
+                }
+              }}
+              open={detailsOpen}
+              onOpenChange={(o) => setDetailsOpen(o)}
+              onUpdate={onUpdateCleanings || (() => {})}
+            />
+          )}
     </div>
   );
 }
