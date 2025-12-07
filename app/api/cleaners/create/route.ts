@@ -1,8 +1,3 @@
-'use server';
-
-export const runtime = 'nodejs';
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
