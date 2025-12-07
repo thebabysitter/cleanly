@@ -254,14 +254,21 @@ export default function CleaningsTab() {
         </>
       )}
 
-      {selectedCleaning && (
-        <CleaningDetailsDialog
-          cleaning={selectedCleaning}
-          open={detailsOpen}
-          onOpenChange={setDetailsOpen}
-          onUpdate={loadCleanings}
-        />
-      )}
+          {selectedCleaning && (
+            <CleaningDetailsDialog
+              cleaning={{
+                ...selectedCleaning,
+                property: {
+                  ...selectedCleaning.property,
+                  // Ensure room_number is explicitly handled if it might be undefined in the source type
+                  room_number: selectedCleaning.property.room_number ?? null
+                }
+              }}
+              open={detailsOpen}
+              onOpenChange={setDetailsOpen}
+              onUpdate={loadCleanings}
+            />
+          )}
     </div>
   );
 }
