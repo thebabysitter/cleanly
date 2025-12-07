@@ -81,7 +81,7 @@ export default function CleanerMyCleaningsPage() {
             <div className="text-center text-slate-500 py-6">No cleanings yet.</div>
           ) : (
             cleanings.map((c) => (
-              <Link key={c.id} href={`/cleaner/cleanings/${c.id}`} className="block rounded-lg border border-slate-200 p-3 bg-white hover:bg-slate-50 transition-colors">
+              <Link key={c.id} href={`/cleaner/cleaning-details?id=${c.id}`} className="block rounded-lg border border-slate-200 p-3 bg-white hover:bg-slate-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{c.property.name}</div>
                   <div className="text-xs">{c.status === 'completed' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Clock className="w-4 h-4 text-slate-400" />}</div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,11 @@ type CleaningDetail = {
   };
 };
 
-export default function CleaningDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+function CleaningDetailsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
+
   const { user, loading: authLoading } = useAuth();
   const [cleaning, setCleaning] = useState<CleaningDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +39,6 @@ export default function CleaningDetailsPage({ params }: { params: Promise<{ id: 
   const [receiptPhoto1, setReceiptPhoto1] = useState<File | null>(null);
   const [receiptPhoto2, setReceiptPhoto2] = useState<File | null>(null);
   const [existingReceipts, setExistingReceipts] = useState<{url: string, category: string}[]>([]);
-
-  const { id } = use(params);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/cleaner-login');
@@ -69,19 +70,12 @@ export default function CleaningDetailsPage({ params }: { params: Promise<{ id: 
       
       setCleaning(c);
       
-      // If transport exists, we don't know the split, so we put it all in slot 1 for editing
-      // unless we want to keep it empty to just "add more"? 
-      // The user said "put in the transport information... later".
-      // If they open this page, they probably want to see what's there or add/edit.
-      // If I pre-fill, they can edit.
       if (c.transport_cost > 0) {
         setTransportCost1(c.transport_cost.toString());
       } else {
         setTransportCost1('');
       }
-      setTransportCost2(''); // Always clear second slot on load/reload to avoid confusion? 
-                             // Or should we support 2 slots persistence? DB only stores total. 
-                             // So on edit, we can only pre-fill one slot with the total.
+      setTransportCost2('');
 
       const { data: media } = await supabase
         .from('cleaning_media')
@@ -372,5 +366,13 @@ export default function CleaningDetailsPage({ params }: { params: Promise<{ id: 
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CleaningDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>}>
+      <CleaningDetailsContent />
+    </Suspense>
   );
 }
