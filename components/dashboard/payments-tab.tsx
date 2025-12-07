@@ -27,7 +27,7 @@ type Cleaning = {
   status: string;
   duration_hours: number | null;
   amount: number | null;
-  property: { name: string };
+  property: { name: string; room_number: string | null };
   cleaner: { id: string; name: string };
 };
 
@@ -82,7 +82,7 @@ export default function PaymentsTab() {
       .from('cleanings')
       .select(`
         *,
-        property:properties(name),
+        property:properties(name, room_number),
         cleaner:cleaners(id, name)
       `)
       .eq('status', 'completed')
@@ -278,8 +278,15 @@ export default function PaymentsTab() {
                                       setDetailsOpen(true);
                                     }}
                                   >
-                                    <TableCell className="font-medium">{c.property.name}</TableCell>
-                            <TableCell>
+                                    <TableCell className="font-medium">
+                                      <div>{c.property.name}</div>
+                                      {c.property.room_number && (
+                                        <div className="text-xs text-slate-500">
+                                          Room {c.property.room_number}
+                                        </div>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
                               <div className="flex items-center gap-1 text-sm">
                                 <Calendar className="w-3 h-3 text-slate-400" />
                                         {c.completed_at
@@ -395,7 +402,14 @@ export default function PaymentsTab() {
                                     }
                                   }}
                                 >
-                                  <TableCell className="font-medium">{cleaning?.property?.name || '—'}</TableCell>
+                                  <TableCell className="font-medium">
+                                    <div>{cleaning?.property?.name || '—'}</div>
+                                    {cleaning?.property?.room_number && (
+                                      <div className="text-xs text-slate-500">
+                                        Room {cleaning.property.room_number}
+                                      </div>
+                                    )}
+                                  </TableCell>
                                   <TableCell>
                                     {cleaning?.completed_at
                                       ? format(new Date(cleaning.completed_at), 'MMM d, yyyy')

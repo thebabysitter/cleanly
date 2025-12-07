@@ -19,7 +19,7 @@ type Cleaning = {
   amount: number | null;
   transport_cost: number | null;
   notes: string | null;
-  property: { name: string; address: string };
+  property: { name: string; address: string; room_number: string | null };
   cleaner: { name: string };
 };
 
@@ -88,7 +88,11 @@ export default function CleaningDetailsDialog({
           <DialogTitle className="text-2xl">{cleaning.property.name}</DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            {cleaning.property.address}
+            {cleaning.property.room_number ? (
+              <span className="font-medium text-slate-700">Room {cleaning.property.room_number}</span>
+            ) : (
+              cleaning.property.address
+            )}
           </DialogDescription>
         </DialogHeader>
 
