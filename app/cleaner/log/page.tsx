@@ -86,8 +86,8 @@ export default function CleanerLogFormPage() {
     e.preventDefault();
     if (!cleaner) return;
     if (!propertyId) return toast.error('Choose property');
-    if (!startPhoto || !afterPhoto) return toast.error('Start and after photos are required');
-    if (!receiptPhoto1) return toast.error('At least one transport receipt is required');
+    if (!afterPhoto) return toast.error('After photo is required');
+    // Transport is now optional
     setSubmitting(true);
     try {
       const property = properties.find((p) => p.id === propertyId);
@@ -193,9 +193,13 @@ export default function CleanerLogFormPage() {
         if (mediaErr) throw mediaErr;
       };
 
-      await uploadOne(startPhoto, 'start', startCapturedAt || now);
+      if (startPhoto) {
+        await uploadOne(startPhoto, 'start', startCapturedAt || now);
+      }
       await uploadOne(afterPhoto, 'after', afterCapturedAt || now);
-      await uploadOne(receiptPhoto1, 'receipt_main', now);
+      if (receiptPhoto1) {
+        await uploadOne(receiptPhoto1, 'receipt_main', now);
+      }
       if (receiptPhoto2) {
         await uploadOne(receiptPhoto2, 'receipt_extra', now);
       }
@@ -289,7 +293,6 @@ export default function CleanerLogFormPage() {
                       setStartPhoto(f);
                       if (f) setStartCapturedAt(new Date().toISOString());
                     }}
-                    required
                   />
                 </div>
 
@@ -335,7 +338,7 @@ export default function CleanerLogFormPage() {
                 <div className="space-y-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium text-slate-700">
-                      Transport 1 (required)
+                      Transport 1 (optional)
                     </Label>
                     <span className="text-[10px] uppercase tracking-wide text-slate-400">
                       Receipt
@@ -346,7 +349,6 @@ export default function CleanerLogFormPage() {
                     accept="image/*"
                     className="cursor-pointer border-0 bg-transparent p-0 text-xs file:mr-2 file:rounded-full file:border-0 file:bg-sky-100 file:px-3 file:py-1 file:text-xs file:font-medium file:text-sky-800"
                     onChange={(e) => setReceiptPhoto1(e.target.files?.[0] || null)}
-                    required
                   />
                   <Input
                     type="text"

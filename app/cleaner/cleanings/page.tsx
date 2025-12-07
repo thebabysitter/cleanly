@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,7 +81,7 @@ export default function CleanerMyCleaningsPage() {
             <div className="text-center text-slate-500 py-6">No cleanings yet.</div>
           ) : (
             cleanings.map((c) => (
-              <div key={c.id} className="rounded-lg border border-slate-200 p-3 bg-white">
+              <Link key={c.id} href={`/cleaner/cleanings/${c.id}`} className="block rounded-lg border border-slate-200 p-3 bg-white hover:bg-slate-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{c.property.name}</div>
                   <div className="text-xs">{c.status === 'completed' ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Clock className="w-4 h-4 text-slate-400" />}</div>
@@ -94,7 +95,7 @@ export default function CleanerMyCleaningsPage() {
                   {typeof c.amount === 'number' ? `Amount: ฿${Math.round(c.amount).toLocaleString()}` : 'Amount: —'}
                   {c.transport_cost ? ` • Transport: ฿${Math.round(c.transport_cost).toLocaleString()}` : ''}
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </CardContent>
