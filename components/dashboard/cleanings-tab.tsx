@@ -131,12 +131,6 @@ export default function CleaningsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Cleanings</h2>
-          <p className="text-slate-500">History of completed cleanings</p>
-        </div>
-      </div>
 
       {properties.length === 0 || cleaners.length === 0 ? (
         <Card>
@@ -151,7 +145,7 @@ export default function CleaningsTab() {
         <>
           {/* Gantt overview */}
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-slate-900">Timeline</h3>
+            <h1 className="text-xl font-semibold text-slate-900">Cleanings Timeline</h1>
             <GanttCleanings
               properties={properties}
               cleanings={cleanings}
