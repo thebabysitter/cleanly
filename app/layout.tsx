@@ -1,11 +1,14 @@
-'use client';
-
 import './globals.css';
 import { Inter } from 'next/font/google';
-import { AuthProvider } from '@/lib/auth-context';
-import { Toaster } from '@/components/ui/sonner';
+import { Providers } from '@/components/providers';
+import type { Metadata } from 'next';
 
 const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'DustFree - Property Management & Cleaning',
+  description: 'Streamline your property management and cleaning workflow',
+};
 
 export default function RootLayout({
   children,
@@ -15,10 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
+        <Providers>
           {children}
-          <Toaster />
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
