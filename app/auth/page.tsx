@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -51,14 +51,27 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      <div className="w-full max-w-md mb-4">
+        <Button 
+          variant="ghost" 
+          className="gap-2 pl-0 hover:bg-transparent hover:text-slate-900 text-slate-500"
+          onClick={() => router.push('/')}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </Button>
+      </div>
+      
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto bg-slate-900 text-white w-12 h-12 rounded-lg flex items-center justify-center">
-            <Building2 className="w-6 h-6" />
+        <CardHeader className="space-y-4 text-center">
+          <div className="flex justify-center">
+            <Logo className="h-8 w-40" />
           </div>
-          <CardTitle className="text-2xl">CleanSchedule</CardTitle>
-          <CardDescription>Manage your Airbnb cleaning schedule</CardDescription>
+          <div>
+            <CardTitle className="text-2xl">Host Login</CardTitle>
+            <CardDescription className="mt-2">Manage your Airbnb cleaning schedule</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-4">
