@@ -25,7 +25,7 @@ export default function Home() {
             Streamline your <span className="text-[#005b9e]">property management</span> and <span className="text-[#1fa2ff]">cleaning workflow</span>
           </h1>
           <p className="text-slate-600 text-lg sm:text-xl max-w-lg mx-auto">
-            The all-in-one platform for hosts and cleaners to coordinate, track, and manage vacation rental cleanings effortlessly.
+            The all-in-one platform for hosts and cleaners to track and manage property cleanings effortlessly.
           </p>
         </div>
 
