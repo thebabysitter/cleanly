@@ -124,20 +124,20 @@ export default function CleanerSalaryPage() {
       </div>
 
       <div className="space-y-4">
-        <Card>
-          <CardHeader>
+      <Card>
+        <CardHeader>
             <CardTitle className="text-lg">Next Payout</CardTitle>
-          </CardHeader>
+        </CardHeader>
           <CardContent>
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
               <div className="flex items-center gap-2 text-emerald-700 font-medium">
-                <DollarSign className="w-5 h-5" />
+              <DollarSign className="w-5 h-5" />
                 <span className="text-2xl font-bold">฿{Math.round(nextPayout).toLocaleString()}</span>
-              </div>
+            </div>
               <p className="text-xs text-emerald-600 mt-2">
                 Estimated amount for completed cleanings not yet paid.
               </p>
-            </div>
+          </div>
           </CardContent>
         </Card>
 
@@ -168,15 +168,15 @@ export default function CleanerSalaryPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-3 pt-1">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
+              <Table>
+                <TableHeader>
+                  <TableRow>
                             <TableHead className="w-[50%]">Property</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                           {g.items.map((item, idx) => (
                             <TableRow key={idx}>
                               <TableCell>
@@ -184,26 +184,26 @@ export default function CleanerSalaryPage() {
                                 {item.room_number && (
                                   <div className="text-xs text-slate-500">
                                     Room {item.room_number}
-                                  </div>
+                        </div>
                                 )}
                               </TableCell>
                               <TableCell className="text-xs text-slate-500">
                                 {format(new Date(item.completed_at), 'MMM d')}
-                              </TableCell>
-                              <TableCell className="text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                                 ฿{Math.round(item.amount).toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
       </div>
     </div>
   );

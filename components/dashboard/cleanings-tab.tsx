@@ -254,8 +254,8 @@ export default function CleaningsTab() {
         </>
       )}
 
-          {selectedCleaning && (
-            <CleaningDetailsDialog
+      {selectedCleaning && (
+        <CleaningDetailsDialog
               cleaning={{
                 ...selectedCleaning,
                 property: {
@@ -264,11 +264,11 @@ export default function CleaningsTab() {
                   room_number: selectedCleaning.property.room_number ?? null
                 }
               }}
-              open={detailsOpen}
-              onOpenChange={setDetailsOpen}
-              onUpdate={loadCleanings}
-            />
-          )}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          onUpdate={loadCleanings}
+        />
+      )}
     </div>
   );
 }

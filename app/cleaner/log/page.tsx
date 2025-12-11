@@ -194,7 +194,7 @@ export default function CleanerLogFormPage() {
       };
 
       if (startPhoto) {
-        await uploadOne(startPhoto, 'start', startCapturedAt || now);
+      await uploadOne(startPhoto, 'start', startCapturedAt || now);
       }
       await uploadOne(afterPhoto, 'after', afterCapturedAt || now);
       if (receiptPhoto1) {

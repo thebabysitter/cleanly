@@ -286,7 +286,7 @@ export default function PaymentsTab() {
                                         </div>
                                       )}
                                     </TableCell>
-                                    <TableCell>
+                            <TableCell>
                               <div className="flex items-center gap-1 text-sm">
                                 <Calendar className="w-3 h-3 text-slate-400" />
                                         {c.completed_at
