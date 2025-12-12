@@ -489,7 +489,7 @@ export default function GanttCleanings({
       <div className="flex">
         {/* Left column: properties (fixed, not horizontally scrollable) */}
         <div className="w-[240px] shrink-0">
-          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center font-semibold text-slate-700 tracking-wide sticky top-0 z-30">
+          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
             Properties
           </div>
           {displayProperties.map((prop) => (
@@ -511,7 +511,7 @@ export default function GanttCleanings({
 
         {/* Middle column: costs per property (fixed) */}
         <div className="w-[200px] shrink-0 border-l border-slate-200">
-          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center text-xs font-semibold text-slate-700 tracking-wide sticky top-0 z-30">
+          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center text-xs font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
             Costs
           </div>
           {displayProperties.map((prop) => {
@@ -572,7 +572,7 @@ export default function GanttCleanings({
               {days.map((day) => (
                 <div
                   key={day.toISOString()}
-                  className="bg-white border-y border-l border-slate-200 px-3 h-12 flex flex-col justify-center sticky top-0 z-20"
+                  className="bg-white border-y border-l border-slate-200 px-3 h-12 flex flex-col justify-center sticky top-16 z-20"
                 >
                   <div className="text-xs text-slate-500">{format(day, 'EEE')}</div>
                   <div className="font-medium text-slate-800">{format(day, 'MMM d')}</div>
