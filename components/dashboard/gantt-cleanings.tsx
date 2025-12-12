@@ -231,15 +231,29 @@ export default function GanttCleanings({
   }, [filteredPropertiesList]);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Scroll to the far right so the last visible day (today or end of range) is in view
-    const el = scrollRef.current;
-    if (!el) return;
-    // wait for layout
+    // Sync header scroll with body scroll
+    const body = scrollRef.current;
+    const header = headerRef.current;
+    
+    if (!body || !header) return;
+
+    const handleScroll = () => {
+      header.scrollLeft = body.scrollLeft;
+    };
+
+    body.addEventListener('scroll', handleScroll);
+    
+    // Also scroll to far right initially
     requestAnimationFrame(() => {
-      el.scrollLeft = el.scrollWidth;
+      if (body) body.scrollLeft = body.scrollWidth;
     });
+
+    return () => {
+      body.removeEventListener('scroll', handleScroll);
+    };
   }, [days.length]);
 
   const datePresets = [
@@ -565,111 +579,121 @@ export default function GanttCleanings({
         </div>
 
         {/* Right side: horizontally scrollable days & cleanings */}
-        <div className="overflow-x-auto" ref={scrollRef}>
-          <div className="min-w-[900px]">
-            {/* Header row */}
-            <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
-              {days.map((day) => (
-                <div
-                  key={day.toISOString()}
-                  className="bg-white border-y border-l border-slate-200 px-3 h-12 flex flex-col justify-center sticky top-16 z-20"
-                >
-                  <div className="text-xs text-slate-500">{format(day, 'EEE')}</div>
-                  <div className="font-medium text-slate-800">{format(day, 'MMM d')}</div>
-                </div>
-              ))}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Header row (sticky independently) */}
+          <div 
+            ref={headerRef}
+            className="sticky top-16 z-20 overflow-hidden bg-white border-y border-slate-200"
+          >
+            <div className="min-w-[900px]">
+              <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
+                {days.map((day) => (
+                  <div
+                    key={day.toISOString()}
+                    className="bg-white border-l border-slate-200 px-3 h-12 flex flex-col justify-center"
+                  >
+                    <div className="text-xs text-slate-500">{format(day, 'EEE')}</div>
+                    <div className="font-medium text-slate-800">{format(day, 'MMM d')}</div>
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
 
-            {/* Body rows: one grid row per property */}
-            {displayProperties.map((prop) => (
-              <div
-                key={prop.id}
-                className={`grid ${prop.isTotal ? 'bg-slate-50/80' : ''}`}
-                style={{ gridTemplateColumns: gridTemplate }}
-              >
-                {days.map((day) => {
-                  if (prop.isTotal) {
-                    const key = format(day, 'yyyy-MM-dd');
-                    const aggregate = dayTotals.get(key);
-                    return (
-                      <div
-                        key={`${prop.id}-${day.toISOString()}`}
-                        className="relative border-t border-l border-slate-200 bg-white h-28"
-                      >
-                        {aggregate && aggregate.amount > 0 ? (
-                          <div
-                            className="absolute left-1 right-1 rounded-full text-white text-[11px] leading-4 shadow-sm px-2 py-1 bg-slate-900"
-                            style={{ top: 14 }}
-                            title={`Total • Cleaning ฿${Math.round(aggregate.amount).toLocaleString()} • Transport ฿${Math.round(
-                              aggregate.transport
-                            ).toLocaleString()}`}
-                          >
-                            <div className="flex items-center gap-1 truncate">
-                              <span className="truncate">
-                                ฿{Math.round(aggregate.amount).toLocaleString()} : ฿{Math.round(aggregate.transport).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  } else {
-                    const items = filteredCleanings
-                      .filter((c) => {
-                        const when = new Date(c.completed_at ?? c.scheduled_date);
-                        return c.property.id === prop.id && isSameDay(when, day);
-                      })
-                      .sort((a, b) => {
-                        const ad = new Date(a.completed_at ?? a.scheduled_date).getTime();
-                        const bd = new Date(b.completed_at ?? b.scheduled_date).getTime();
-                        return ad - bd;
-                      });
-
-                    return (
-                      <div
-                        key={`${prop.id}-${day.toISOString()}`}
-                        className="relative border-t border-l border-slate-200 bg-white h-28"
-                      >
-                        {items.map((c, idx) => {
-                          const color = getColorForCleaner(c.cleaner.id);
-                          const top = 6 + idx * 22;
-                          const amount = Math.round(c.amount ?? 0);
-                          const transport = Math.round(c.transport_cost ?? 0);
-                          return (
+          {/* Body rows (scrollable) */}
+          <div className="overflow-x-auto" ref={scrollRef}>
+            <div className="min-w-[900px]">
+              {/* Body rows: one grid row per property */}
+              {displayProperties.map((prop) => (
+                <div
+                  key={prop.id}
+                  className={`grid ${prop.isTotal ? 'bg-slate-50/80' : ''}`}
+                  style={{ gridTemplateColumns: gridTemplate }}
+                >
+                  {days.map((day) => {
+                    if (prop.isTotal) {
+                      const key = format(day, 'yyyy-MM-dd');
+                      const aggregate = dayTotals.get(key);
+                      return (
+                        <div
+                          key={`${prop.id}-${day.toISOString()}`}
+                          className="relative border-t border-l border-slate-200 bg-white h-28"
+                        >
+                          {aggregate && aggregate.amount > 0 ? (
                             <div
-                              key={c.id}
-                              className="absolute left-1 right-1 rounded-full text-white text-[11px] leading-4 shadow-sm px-2 py-1 cursor-pointer"
-                              style={{ top, backgroundColor: color }}
-                              title={`${prop.name} • Cleaning ฿${amount} • Transport ฿${transport}`}
-                              onClick={() => {
-                                setSelectedCleaning(c);
-                                setDetailsOpen(true);
-                              }}
+                              className="absolute left-1 right-1 rounded-full text-white text-[11px] leading-4 shadow-sm px-2 py-1 bg-slate-900"
+                              style={{ top: 14 }}
+                              title={`Total • Cleaning ฿${Math.round(aggregate.amount).toLocaleString()} • Transport ฿${Math.round(
+                                aggregate.transport
+                              ).toLocaleString()}`}
                             >
                               <div className="flex items-center gap-1 truncate">
-                                <span className="truncate">฿{amount} : ฿{transport}</span>
+                                <span className="truncate">
+                                  ฿{Math.round(aggregate.amount).toLocaleString()} : ฿{Math.round(aggregate.transport).toLocaleString()}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }
-                })}
-              </div>
-            ))}
+                          ) : null}
+                        </div>
+                      );
+                    } else {
+                      const items = filteredCleanings
+                        .filter((c) => {
+                          const when = new Date(c.completed_at ?? c.scheduled_date);
+                          return c.property.id === prop.id && isSameDay(when, day);
+                        })
+                        .sort((a, b) => {
+                          const ad = new Date(a.completed_at ?? a.scheduled_date).getTime();
+                          const bd = new Date(b.completed_at ?? b.scheduled_date).getTime();
+                          return ad - bd;
+                        });
 
-            {/* legend */}
-            <div className="flex flex-wrap gap-3 mt-3">
-              {cleaners.map((cl) => (
-                <div key={cl.id} className="flex items-center gap-2 text-sm text-slate-600">
-                  <span
-                    className="inline-block w-3 h-3 rounded"
-                    style={{ backgroundColor: getColorForCleaner(cl.id) }}
-                  />
-                  <span>{cl.name}</span>
+                      return (
+                        <div
+                          key={`${prop.id}-${day.toISOString()}`}
+                          className="relative border-t border-l border-slate-200 bg-white h-28"
+                        >
+                          {items.map((c, idx) => {
+                            const color = getColorForCleaner(c.cleaner.id);
+                            const top = 6 + idx * 22;
+                            const amount = Math.round(c.amount ?? 0);
+                            const transport = Math.round(c.transport_cost ?? 0);
+                            return (
+                              <div
+                                key={c.id}
+                                className="absolute left-1 right-1 rounded-full text-white text-[11px] leading-4 shadow-sm px-2 py-1 cursor-pointer"
+                                style={{ top, backgroundColor: color }}
+                                title={`${prop.name} • Cleaning ฿${amount} • Transport ฿${transport}`}
+                                onClick={() => {
+                                  setSelectedCleaning(c);
+                                  setDetailsOpen(true);
+                                }}
+                              >
+                                <div className="flex items-center gap-1 truncate">
+                                  <span className="truncate">฿{amount} : ฿{transport}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
               ))}
+
+              {/* legend */}
+              <div className="flex flex-wrap gap-3 mt-3">
+                {cleaners.map((cl) => (
+                  <div key={cl.id} className="flex items-center gap-2 text-sm text-slate-600">
+                    <span
+                      className="inline-block w-3 h-3 rounded"
+                      style={{ backgroundColor: getColorForCleaner(cl.id) }}
+                    />
+                    <span>{cl.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
