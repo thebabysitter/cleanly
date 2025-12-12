@@ -70,7 +70,7 @@ export default function AuthPage() {
           </div>
           <div>
             <CardTitle className="text-2xl">Host Login</CardTitle>
-            <CardDescription className="mt-2">Manage your Airbnb cleaning schedule</CardDescription>
+            <CardDescription className="mt-2">Contact us for access</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
