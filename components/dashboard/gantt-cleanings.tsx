@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { format, isSameDay, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, addDays, subDays, startOfDay, endOfDay, startOfYear, subYears } from 'date-fns';
-import { ChevronsUpDown, Check, CalendarIcon } from 'lucide-react';
+import { ChevronsUpDown, Check, CalendarIcon, Eye, EyeOff } from 'lucide-react';
 import CleaningDetailsDialog from './cleaning-details-dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
@@ -116,6 +116,8 @@ export default function GanttCleanings({
   const [selectedBuildings, setSelectedBuildings] = useState<string[]>([]);
   const [buildingMenuOpen, setBuildingMenuOpen] = useState(false);
   const [cleanerMenuOpen, setCleanerMenuOpen] = useState(false);
+  const [showDetailedCosts, setShowDetailedCosts] = useState(false);
+  const rowHeight = showDetailedCosts ? 'h-28' : 'h-12';
 
   const days = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
@@ -214,8 +216,15 @@ export default function GanttCleanings({
   const propertiesList = useMemo(() => {
     const merged = properties?.length ? properties : cleanings.map((c) => c.property);
     if (!merged || merged.length === 0) return [];
-    // Sort alphabetically by name
-    return merged.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort alphabetically by name, then by room number
+    return merged.sort((a, b) => {
+      const nameCompare = a.name.localeCompare(b.name);
+      if (nameCompare !== 0) return nameCompare;
+      
+      const roomA = a.room_number || '';
+      const roomB = b.room_number || '';
+      return roomA.localeCompare(roomB, undefined, { numeric: true });
+    });
   }, [properties, cleanings]);
 
   const filteredPropertiesList = useMemo(() => {
@@ -509,24 +518,34 @@ export default function GanttCleanings({
           {displayProperties.map((prop) => (
             <div
               key={prop.id}
-              className={`border-t border-slate-200 px-3 h-28 flex flex-col justify-center ${
+              className={`border-t border-slate-200 px-3 ${rowHeight} flex flex-col justify-center ${
                 prop.isTotal ? 'bg-slate-900 text-white' : 'bg-white text-slate-800'
               }`}
             >
               <div className={`truncate ${prop.isTotal ? 'font-semibold text-base' : 'font-medium'}`} title={prop.name}>
                 {prop.name}
+                {!prop.isTotal && prop.room_number && <span className="font-normal text-slate-500 ml-1">- {prop.room_number}</span>}
               </div>
               <div className={`text-xs truncate ${prop.isTotal ? 'text-slate-200/80' : 'text-slate-500'}`}>
-                {prop.isTotal ? 'All properties' : prop.floor || prop.room_number ? [prop.floor, prop.room_number].filter(Boolean).join(' • ') : '-'}
+                {prop.isTotal ? '' : ''}
               </div>
             </div>
           ))}
         </div>
 
         {/* Middle column: costs per property (fixed) */}
-        <div className="w-[200px] shrink-0 border-l border-slate-200">
-          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center text-xs font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
-            Costs
+        <div className="w-[200px] shrink-0 border-l border-r border-slate-200">
+          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center justify-between text-xs font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
+            <span>Costs</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setShowDetailedCosts(!showDetailedCosts)}
+              title={showDetailedCosts ? "Show total only" : "Show detailed breakdown"}
+            >
+              {showDetailedCosts ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </Button>
           </div>
           {displayProperties.map((prop) => {
             const totals = prop.isTotal
@@ -541,38 +560,47 @@ export default function GanttCleanings({
             return (
               <div
                 key={prop.id}
-                className={`border-t border-slate-200 px-3 text-xs space-y-1 h-28 flex flex-col justify-center rounded-r ${
+                className={`border-t border-slate-200 px-3 text-xs space-y-1 ${rowHeight} flex flex-col justify-center rounded-r ${
                   prop.isTotal ? 'bg-slate-100 font-semibold text-slate-900' : 'bg-white text-slate-700'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">#</span>
-                  <span className="text-slate-900">
-                    {count}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">C</span>
-                  <span className="text-slate-900">
-                    ฿{Math.round(totals.cleaning).toLocaleString('en-US')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">T</span>
-                  <span className="text-slate-900">
-                    ฿{Math.round(totals.transport).toLocaleString('en-US')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-700">O</span>
-                  <span className="text-slate-900">
-                    ฿{Math.round(totals.other).toLocaleString('en-US')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-slate-900">
-                  <span className="font-bold tracking-wide uppercase text-[11px]">TOTAL</span>
-                  <span className="font-semibold text-base">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
-                </div>
+                {showDetailedCosts ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">#</span>
+                      <span className="text-slate-900">
+                        {count}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">C</span>
+                      <span className="text-slate-900">
+                        ฿{Math.round(totals.cleaning).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">T</span>
+                      <span className="text-slate-900">
+                        ฿{Math.round(totals.transport).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">O</span>
+                      <span className="text-slate-900">
+                        ฿{Math.round(totals.other).toLocaleString('en-US')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-slate-900">
+                      <span className="font-bold tracking-wide uppercase text-[11px]">TOTAL</span>
+                      <span className="font-semibold text-base">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-slate-900">
+                    <span className="font-bold tracking-wide uppercase text-[11px]">Total ({count})</span>
+                    <span className="font-semibold text-sm">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -617,7 +645,7 @@ export default function GanttCleanings({
                       return (
                         <div
                           key={`${prop.id}-${day.toISOString()}`}
-                          className="relative border-t border-l border-slate-200 bg-white h-28"
+                          className={`relative border-t border-l border-slate-200 bg-white ${rowHeight}`}
                         >
                           {aggregate && aggregate.amount > 0 ? (
                             <div
@@ -651,7 +679,7 @@ export default function GanttCleanings({
                       return (
                         <div
                           key={`${prop.id}-${day.toISOString()}`}
-                          className="relative border-t border-l border-slate-200 bg-white h-28"
+                          className={`relative border-t border-l border-slate-200 bg-white ${rowHeight}`}
                         >
                           {items.map((c, idx) => {
                             const color = getColorForCleaner(c.cleaner.id);
