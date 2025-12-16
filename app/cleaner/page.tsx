@@ -180,6 +180,9 @@ export default function CleanerLogPage() {
             <Button className="w-full h-12 text-base" variant="outline" onClick={() => router.push('/cleaner/salary')}>
               Salary
             </Button>
+            <Button className="w-full h-12 text-base" variant="outline" onClick={() => router.push('/cleaner/profile')}>
+              Profile & Payments
+            </Button>
           </div>
         </CardContent>
       </Card>

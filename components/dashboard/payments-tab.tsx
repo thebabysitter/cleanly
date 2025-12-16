@@ -8,16 +8,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, User, TrendingUp, Calendar, Check, BadgeCheck } from 'lucide-react';
+import { DollarSign, User, TrendingUp, Calendar, Check, BadgeCheck, Loader2, Upload, ImageIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import CleaningDetailsDialog from './cleaning-details-dialog';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 type Cleaner = {
   id: string;
   name: string;
   hourly_rate: number;
+  payment_details_image: string | null;
 };
 
 type Cleaning = {
@@ -44,6 +48,7 @@ type Payout = {
   cleaning_id: string;
   amount: number;
   paid_at: string;
+  proof_of_payment_url?: string | null;
 };
 
 const CLEANING_RATE = 700; // flat rate per completed cleaning
@@ -57,6 +62,12 @@ export default function PaymentsTab() {
   const [selectedCleaning, setSelectedCleaning] = useState<Cleaning | null>(null);
   const [selectedCleaner, setSelectedCleaner] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+
+  // Payment Dialog State
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [activePayment, setActivePayment] = useState<CleanerPayment | null>(null);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -106,7 +117,13 @@ export default function PaymentsTab() {
       const paidCleaningIds = new Set(
         payouts.filter((p) => p.cleaner_id === cleaner.id).map((p) => p.cleaning_id)
       );
-      const pendingCleanings = cleanerCleanings.filter((c) => !paidCleaningIds.has(c.id));
+      const pendingCleanings = cleanerCleanings
+        .filter((c) => !paidCleaningIds.has(c.id))
+        .sort((a, b) => {
+          const dateA = new Date(a.completed_at || a.scheduled_date).getTime();
+          const dateB = new Date(b.completed_at || b.scheduled_date).getTime();
+          return dateB - dateA;
+        });
       const pendingAmount = pendingCleanings.reduce((sum, c) => sum + (c.amount ?? CLEANING_RATE), 0);
 
       return {
@@ -124,6 +141,59 @@ export default function PaymentsTab() {
   const updateCleaningAmount = async (cleaningId: string, amount: number) => {
     await supabase.from('cleanings').update({ amount }).eq('id', cleaningId);
     setCleanings((prev) => prev.map((c) => (c.id === cleaningId ? { ...c, amount } : c)));
+  };
+
+  const handleOpenPaymentDialog = (payment: CleanerPayment) => {
+    setActivePayment(payment);
+    setPaymentProofFile(null);
+    setPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!activePayment || !user) return;
+    
+    setIsPaying(true);
+    try {
+      let proofUrl = null;
+
+      // Upload proof if exists
+      if (paymentProofFile) {
+        const bucket = 'cleaner-documents';
+        const ext = paymentProofFile.name.split('.').pop();
+        const fileName = `payment-proofs/${Date.now()}.${ext}`;
+        const path = `payment-proofs/${user.id}/${fileName}`;
+        
+        const { error: uploadErr } = await supabase.storage.from(bucket).upload(path, paymentProofFile, {
+          upsert: true,
+          contentType: paymentProofFile.type
+        });
+        
+        if (uploadErr) throw uploadErr;
+        
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+        proofUrl = data.publicUrl;
+      }
+
+      const rows = activePayment.pendingCleanings.map((c) => ({
+        host_id: user.id,
+        cleaner_id: activePayment.cleaner.id,
+        cleaning_id: c.id,
+        amount: (c.amount ?? CLEANING_RATE),
+        proof_of_payment_url: proofUrl
+      }));
+
+      const { error } = await supabase.from('cleaner_payouts').insert(rows);
+      if (error) throw error;
+
+      await loadPayouts();
+      setPaymentDialogOpen(false);
+      toast.success('Payment recorded successfully');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to record payment: ' + err.message);
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const filteredPayments = selectedCleaner === 'all'
@@ -235,19 +305,9 @@ export default function PaymentsTab() {
                         <Button
                           size="sm"
                           disabled={payment.pendingCount === 0}
-                          onClick={async () => {
-                            if (payment.pendingCount === 0) return;
-                            const rows = payment.pendingCleanings.map((c) => ({
-                              host_id: user?.id as string,
-                              cleaner_id: payment.cleaner.id,
-                              cleaning_id: c.id,
-                              amount: (c.amount ?? CLEANING_RATE),
-                            }));
-                            await supabase.from('cleaner_payouts').insert(rows);
-                            await loadPayouts();
-                          }}
+                          onClick={() => handleOpenPaymentDialog(payment)}
                         >
-                          Mark paid
+                          Pay
                         </Button>
                       </div>
                     </div>
@@ -321,8 +381,6 @@ export default function PaymentsTab() {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
-
-                  {/* Pending list removed as requested */}
                 </div>
               ))}
             </div>
@@ -330,7 +388,7 @@ export default function PaymentsTab() {
         </CardContent>
       </Card>
 
-      {/* Payout History - grouped by overall payment (batch) */}
+      {/* Payout History */}
       <Card>
         <CardHeader>
           <CardTitle>Payout History</CardTitle>
@@ -348,6 +406,7 @@ export default function PaymentsTab() {
                 cleanerId: string;
                 paidAt: string;
                 total: number;
+                proofUrl?: string | null;
                 items: { payout: Payout; cleaning?: Cleaning }[];
               }>();
               payouts.forEach((p) => {
@@ -357,6 +416,7 @@ export default function PaymentsTab() {
                   cleanerId: p.cleaner_id,
                   paidAt: p.paid_at,
                   total: 0,
+                  proofUrl: p.proof_of_payment_url, // Assume same per batch
                   items: [],
                 };
                 g.total += p.amount;
@@ -382,6 +442,17 @@ export default function PaymentsTab() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="pb-4">
+                          {g.proofUrl && (
+                            <div className="mb-4 p-3 bg-slate-50 rounded border flex items-center gap-3">
+                              <BadgeCheck className="h-5 w-5 text-green-600" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-900">Proof of Payment</p>
+                                <a href={g.proofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                                  View Receipt
+                                </a>
+                              </div>
+                            </div>
+                          )}
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -432,6 +503,84 @@ export default function PaymentsTab() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pay {activePayment?.cleaner.name}</DialogTitle>
+            <DialogDescription>
+              Total to pay: <span className="font-bold text-green-600">฿{activePayment?.pendingAmount.toLocaleString()}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Cleaner's Payment Details */}
+            <div className="space-y-2">
+              <Label>Payment Details</Label>
+              {activePayment?.cleaner.payment_details_image ? (
+                <div className="relative rounded-lg overflow-hidden border bg-slate-100">
+                  <img 
+                    src={activePayment.cleaner.payment_details_image} 
+                    alt="Payment Details" 
+                    className="w-full max-h-[300px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="p-4 border border-dashed rounded-lg bg-slate-50 text-center text-slate-500 text-sm">
+                  Cleaner hasn't uploaded payment details yet.
+                </div>
+              )}
+            </div>
+
+            {/* Upload Proof */}
+            <div className="space-y-2">
+              <Label>Proof of Payment (Optional)</Label>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" className="relative cursor-pointer w-full" disabled={isPaying}>
+                  {paymentProofFile ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4 text-green-600" />
+                      {paymentProofFile.name}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Receipt/Slip
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        setPaymentProofFile(e.target.files[0]);
+                      }
+                    }}
+                    disabled={isPaying}
+                  />
+                </Button>
+                {paymentProofFile && (
+                  <Button variant="ghost" size="icon" onClick={() => setPaymentProofFile(null)}>
+                    <span className="sr-only">Remove</span>
+                    <span className="text-xl">×</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)} disabled={isPaying}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmPayment} disabled={isPaying}>
+              {isPaying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Mark as Paid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {selectedCleaning && (
         <CleaningDetailsDialog
