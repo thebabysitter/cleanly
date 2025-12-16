@@ -99,10 +99,13 @@ export default function CleaningDetailsDialog({
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-500 text-xs">Status</Label>
-              <Badge variant="default" className="text-sm">
-                {cleaning.status.replace('_', ' ')}
-              </Badge>
+              <Label className="text-slate-500 text-xs">Cleaning Date</Label>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-slate-400" />
+                <span className="text-sm">
+                  {format(new Date(cleaning.completed_at || cleaning.scheduled_date), 'MMM d, yyyy h:mm a')}
+                </span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-slate-500 text-xs">Cleaner</Label>
@@ -111,24 +114,6 @@ export default function CleaningDetailsDialog({
                 <span className="text-sm">{cleaning.cleaner.name}</span>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-slate-500 text-xs">Scheduled</Label>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span className="text-sm">
-                  {format(new Date(cleaning.scheduled_date), 'MMM d, yyyy h:mm a')}
-                </span>
-              </div>
-            </div>
-            {cleaning.duration_hours && (
-              <div className="space-y-2">
-                <Label className="text-slate-500 text-xs">Duration</Label>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-400" />
-                  <span className="text-sm">{cleaning.duration_hours} hours</span>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
