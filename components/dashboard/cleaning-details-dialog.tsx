@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 type Cleaning = {
   id: string;
   scheduled_date: string;
+  completed_at?: string | null;
   status: string;
   duration_hours: number | null;
   amount: number | null;
