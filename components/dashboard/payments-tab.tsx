@@ -154,7 +154,7 @@ export default function PaymentsTab() {
     
     setIsPaying(true);
     try {
-      let proofUrl = null;
+      let proofUrl: string | null = null;
 
       // Upload proof if exists
       if (paymentProofFile) {
