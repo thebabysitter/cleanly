@@ -76,7 +76,7 @@ export default function Home() {
               <p className="text-center text-sm text-slate-600">
                 Want access or have questions? Email{' '}
                 <a className="font-medium text-slate-900 underline underline-offset-4" href="mailto:dustfreeteam@gmail.com">
-                  dustfreeteam@gmail.com
+                  martinfellov@gmail.com
                 </a>
                 .
               </p>
