@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { User, KeyRound } from 'lucide-react';
@@ -7,6 +8,8 @@ import { Logo } from '@/components/ui/logo';
 
 export default function Home() {
   const demoUrl = 'https://6dcy2s2xrn.ufs.sh/f/KxhfMBJIFhjsW4roDXN0vriqwoy1b4UMQlcI6J2mzCsSXVjk';
+  const demoThumbnailUrl = 'https://6dcy2s2xrn.ufs.sh/f/KxhfMBJIFhjsZddiAUDj7ve3dU2u6VSfKt8qJsGEw9ATblpN';
+  const [isDemoPlaying, setIsDemoPlaying] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
@@ -16,7 +19,9 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Logo className="h-8 w-40" />
           </div>
-          {/* Optional: Add "Login" or other nav items here if needed later */}
+          <Button asChild className="h-10 px-4">
+            <Link href="#contact">Get Access</Link>
+          </Button>
         </div>
       </nav>
 
@@ -62,24 +67,60 @@ export default function Home() {
                 <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">How it works</h2>
               </div>
 
-              <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-black">
-                <div className="aspect-video w-full">
-                  <iframe
-                    src={demoUrl}
-                    title="CleanShift live demo"
-                    className="h-full w-full"
-                    allow="fullscreen; clipboard-read; clipboard-write"
-                  />
+              {isDemoPlaying ? (
+                <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-black">
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src={demoUrl}
+                      title="CleanShift demo video"
+                      className="h-full w-full"
+                      allow="fullscreen; clipboard-read; clipboard-write; autoplay"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsDemoPlaying(true)}
+                  className="group relative w-full overflow-hidden rounded-xl border border-slate-200 bg-black"
+                  aria-label="Play demo video"
+                >
+                  <div className="aspect-video w-full">
+                    <img
+                      src={demoThumbnailUrl}
+                      alt="Demo video thumbnail"
+                      className="h-full w-full object-cover opacity-95 transition-opacity group-hover:opacity-100"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                    <div className="grid place-items-center rounded-full bg-black/55 px-6 py-4 backdrop-blur-sm transition-transform group-hover:scale-105">
+                      <div className="h-14 w-14 rounded-full bg-white/90 grid place-items-center">
+                        <span className="ml-1 block h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] border-l-slate-900" />
+                      </div>
+                      <span className="mt-3 text-sm font-medium text-white">Play demo</span>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
-              <p className="text-center text-sm text-slate-600">
-                Want access or have questions? Email{' '}
-                <a className="font-medium text-slate-900 underline underline-offset-4" href="mailto:dustfreeteam@gmail.com">
-                  teamdustfree@gmail.com
-                </a>
-                .
+        {/* Contact Section */}
+        <section id="contact" className="w-full max-w-2xl px-4 mt-10">
+          <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-6 sm:p-8 shadow-sm">
+            <div className="text-center">
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">Want access or have questions?</h2>
+              <p className="text-slate-600 mt-2">
+
+                <span className="block mt-1">Send us an email on teamdustfree@gmail.com</span>
               </p>
+              <div className="mt-5 flex justify-center">
+                <Button asChild className="h-12 px-6">
+                  <a href="mailto:teamdustfree@gmail.com">Email us</a>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
