@@ -6,6 +6,8 @@ import { User, KeyRound } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 
 export default function Home() {
+  const demoUrl = 'https://6dcy2s2xrn.ufs.sh/f/KxhfMBJIFhjsW4roDXN0vriqwoy1b4UMQlcI6J2mzCsSXVjk';
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Navbar */}
@@ -51,6 +53,36 @@ export default function Home() {
             </Button>
           </Link>
         </div>
+
+        {/* Demo Section */}
+        <section className="w-full max-w-2xl px-4 mt-12">
+          <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-col gap-5">
+              <div className="text-center">
+                <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">How it works</h2>
+              </div>
+
+              <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-black">
+                <div className="aspect-video w-full">
+                  <iframe
+                    src={demoUrl}
+                    title="CleanShift live demo"
+                    className="h-full w-full"
+                    allow="fullscreen; clipboard-read; clipboard-write"
+                  />
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-slate-600">
+                Want access or have questions? Email{' '}
+                <a className="font-medium text-slate-900 underline underline-offset-4" href="mailto:dustfreeteam@gmail.com">
+                  dustfreeteam@gmail.com
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
       
       {/* Footer (Simple) */}

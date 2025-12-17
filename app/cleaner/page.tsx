@@ -6,12 +6,8 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Calendar, CheckSquare, Images, Plus, Save } from 'lucide-react';
+import { Images, Plus, Save } from 'lucide-react';
 import { format } from 'date-fns';
 
 type CleanerRow = {
@@ -24,12 +20,6 @@ type Property = {
   id: string;
   name: string;
   address: string;
-};
-
-type Task = {
-  id: string;
-  task: string;
-  completed: boolean;
 };
 
 type Media = {
@@ -46,8 +36,6 @@ export default function CleanerLogPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [creating, setCreating] = useState(false);
   const [createdCleaningId, setCreatedCleaningId] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [tasksOpen, setTasksOpen] = useState(false);
   const [media, setMedia] = useState<Media[]>([]);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -94,22 +82,6 @@ export default function CleanerLogPage() {
 
   const goToLog = () => {
     router.push('/cleaner/log');
-  };
-
-  const openTasks = async () => {
-    if (!selectedPropertyId) return;
-    const { data } = await supabase
-      .from('property_tasks')
-      .select('id, task, completed')
-      .eq('property_id', selectedPropertyId)
-      .order('order');
-    setTasks(data || []);
-    setTasksOpen(true);
-  };
-
-  const toggleTask = async (taskId: string, completed: boolean) => {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, completed } : t)));
-    await supabase.from('property_tasks').update({ completed }).eq('id', taskId);
   };
 
   const openMedia = async () => {
@@ -189,5 +161,3 @@ export default function CleanerLogPage() {
     </div>
   );
 }
-
-

@@ -10,8 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Building, Plus, MapPin, Pencil, Trash2, ListChecks } from 'lucide-react';
-import PropertyTasksDialog from './property-tasks-dialog';
+import { Building, Plus, MapPin, Pencil, Trash2 } from 'lucide-react';
 
 type Property = {
   id: string;
@@ -29,8 +28,6 @@ export default function PropertiesTab() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
-  const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProperties();
@@ -125,11 +122,6 @@ export default function PropertiesTab() {
       toast.success('Property deleted successfully');
       loadProperties();
     }
-  };
-
-  const openTasksDialog = (propertyId: string) => {
-    setSelectedPropertyId(propertyId);
-    setTasksDialogOpen(true);
   };
 
   if (loading) {
@@ -287,15 +279,6 @@ export default function PropertiesTab() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 gap-2"
-                    onClick={() => openTasksDialog(property.id)}
-                  >
-                    <ListChecks className="w-4 h-4" />
-                    Tasks
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => {
                       setEditingProperty(property);
                       setOpen(true);
@@ -315,14 +298,6 @@ export default function PropertiesTab() {
             </Card>
           ))}
         </div>
-      )}
-
-      {selectedPropertyId && (
-        <PropertyTasksDialog
-          propertyId={selectedPropertyId}
-          open={tasksDialogOpen}
-          onOpenChange={setTasksDialogOpen}
-        />
       )}
     </div>
   );

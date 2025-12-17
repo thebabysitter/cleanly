@@ -177,34 +177,6 @@ export type Database = {
           uploaded_at?: string;
         };
       };
-      property_tasks: {
-        Row: {
-          id: string;
-          property_id: string;
-          task: string;
-          completed: boolean;
-          order: number;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          property_id: string;
-          task: string;
-          completed?: boolean;
-          order?: number;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          property_id?: string;
-          task?: string;
-          completed?: boolean;
-          order?: number;
-          updated_at?: string;
-        };
-      };
       cleaner_payouts: {
         Row: {
           id: string;
