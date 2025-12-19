@@ -29,7 +29,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="max-w-2xl text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight leading-tight">
-            Dustfree — streamline your{' '}
+            Streamline your{' '}
             <span className="text-[#005b9e]">property management</span> and{' '}
             <span className="text-[#1fa2ff]">cleaning workflow</span>
           </h1>
