@@ -29,7 +29,9 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="max-w-2xl text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 tracking-tight leading-tight">
-            Streamline your <span className="text-[#005b9e]">property management</span> and <span className="text-[#1fa2ff]">cleaning workflow</span>
+            Dustfree — streamline your{' '}
+            <span className="text-[#005b9e]">property management</span> and{' '}
+            <span className="text-[#1fa2ff]">cleaning workflow</span>
           </h1>
           <p className="text-slate-600 text-lg sm:text-xl max-w-lg mx-auto">
             The all-in-one platform for hosts and cleaners to track and manage property cleanings effortlessly.
@@ -72,7 +74,7 @@ export default function Home() {
                   <div className="aspect-video w-full">
                     <iframe
                       src={demoUrl}
-                      title="CleanShift demo video"
+                      title="Dustfree demo video"
                       className="h-full w-full"
                       allow="fullscreen; clipboard-read; clipboard-write; autoplay"
                     />
