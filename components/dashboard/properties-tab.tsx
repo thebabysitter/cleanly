@@ -39,12 +39,26 @@ export default function PropertiesTab() {
       .from('properties')
       .select('*')
       .eq('host_id', user?.id)
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true })
+      .order('room_number', { ascending: true });
 
     if (error) {
       toast.error('Failed to load properties');
     } else {
-      setProperties(data || []);
+      const sorted = (data || []).slice().sort((a: any, b: any) => {
+        const nameA = String(a.name || '');
+        const nameB = String(b.name || '');
+        const byName = nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+        if (byName !== 0) return byName;
+
+        const roomA = (a.room_number ?? '').toString();
+        const roomB = (b.room_number ?? '').toString();
+        if (!roomA && roomB) return 1;
+        if (roomA && !roomB) return -1;
+        return roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' });
+      }) as Property[];
+
+      setProperties(sorted);
     }
     setLoading(false);
   };
@@ -243,56 +257,43 @@ export default function PropertiesTab() {
               key={property.id}
               className="hover:shadow-md transition-shadow overflow-hidden"
             >
-              <CardHeader className="px-4 py-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base font-semibold truncate">
-                      {property.name}
-                    </CardTitle>
-                    <div className="mt-1 space-y-0.5 text-xs sm:text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        <span className="break-words">{property.address}</span>
-                      </div>
-                      {(property.floor || property.room_number) && (
-                        <div className="pl-4 text-xs text-slate-500">
-                          {[property.floor, property.room_number].filter(Boolean).join(' • ')}
-                        </div>
-                      )}
+              <CardContent className="px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  {/* One-line summary */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-sm text-slate-900 min-w-0">
+                      <span className="font-semibold truncate">{property.name}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-600 shrink-0">
+                        {property.room_number ? `Room ${property.room_number}` : 'No room'}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-700 shrink-0">
+                        ฿{(property.cleaner_rate_baht ?? 700).toLocaleString()}
+                      </span>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="px-4 pt-0 pb-3">
-                <p className="text-sm text-slate-700 mb-1">
-                  Cleaner payout:{' '}
-                  <span className="font-medium">
-                    ฿{(property.cleaner_rate_baht ?? 700).toLocaleString()}
-                  </span>
-                </p>
-                {property.description && (
-                  <p className="text-xs text-slate-600 mb-2 line-clamp-2">
-                    {property.description}
-                  </p>
-                )}
-                <div className="flex gap-2 mt-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditingProperty(property);
-                      setOpen(true);
-                    }}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(property.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+
+                  {/* Actions on the right */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingProperty(property);
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(property.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

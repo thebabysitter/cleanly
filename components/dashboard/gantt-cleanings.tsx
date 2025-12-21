@@ -17,7 +17,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type DateRange = {
+export type DateRange = {
   from: Date | undefined;
   to: Date | undefined;
 };
@@ -55,6 +55,8 @@ type GanttCleaningsProps = {
   properties: Property[];
   cleanings: Cleaning[];
   cleaners: Cleaner[];
+  dateRange: DateRange;
+  onDateRangeChange: (range: DateRange) => void;
   selectedCleanerId?: string | 'all';
   onSelectCleaner?: (cleanerId: string | 'all') => void;
   onUpdateCleanings?: () => void;
@@ -87,17 +89,14 @@ export default function GanttCleanings({
   properties,
   cleanings,
   cleaners,
+  dateRange,
+  onDateRangeChange,
   selectedCleanerId = 'all',
   onSelectCleaner,
   onUpdateCleanings,
 }: GanttCleaningsProps) {
   const today = useMemo(() => new Date(), []);
-  
-  // Date range state - default to last 30 days
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subDays(today, 30),
-    to: today,
-  });
+
   const [tempDateRange, setTempDateRange] = useState<DateRange>({
     from: startOfMonth(today),
     to: today,
@@ -380,7 +379,7 @@ export default function GanttCleanings({
                   size="sm"
                   onClick={() => {
                     if (tempDateRange.from && tempDateRange.to) {
-                      setDateRange(tempDateRange);
+                      onDateRangeChange(tempDateRange);
                       setDatePickerOpen(false);
                     }
                   }}

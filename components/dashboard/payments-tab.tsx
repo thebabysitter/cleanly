@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,7 +54,11 @@ type Payout = {
 
 const CLEANING_RATE = 700; // flat rate per completed cleaning
 
-export default function PaymentsTab() {
+type PaymentsTabProps = {
+  mode?: 'payments' | 'history';
+};
+
+export default function PaymentsTab({ mode = 'payments' }: PaymentsTabProps) {
   const { user } = useAuth();
   const [cleaners, setCleaners] = useState<Cleaner[]>([]);
   const [cleanings, setCleanings] = useState<Cleaning[]>([]);
@@ -135,8 +140,15 @@ export default function PaymentsTab() {
     });
   };
 
-  const cleanerPayments = getCleanerPayments();
-  const totalOwedAll = cleanerPayments.reduce((sum, cp) => sum + cp.pendingAmount, 0);
+  const cleanerPayments =
+    mode === 'payments'
+      ? // Only show cleaners where the host actually owes money (pending payouts)
+        getCleanerPayments().filter((cp) => cp.pendingCount > 0)
+      : [];
+  const totalOwedAll =
+    mode === 'payments'
+      ? cleanerPayments.reduce((sum, cp) => sum + cp.pendingAmount, 0)
+      : 0;
 
   const updateCleaningAmount = async (cleaningId: string, amount: number) => {
     await supabase.from('cleanings').update({ amount }).eq('id', cleaningId);
@@ -196,9 +208,12 @@ export default function PaymentsTab() {
     }
   };
 
-  const filteredPayments = selectedCleaner === 'all'
-    ? cleanerPayments
-    : cleanerPayments.filter(cp => cp.cleaner.id === selectedCleaner);
+  const filteredPayments =
+    mode !== 'payments'
+      ? []
+      : selectedCleaner === 'all'
+      ? cleanerPayments
+      : cleanerPayments.filter((cp) => cp.cleaner.id === selectedCleaner);
 
   if (loading) {
     return <div className="text-center py-8">Loading payments...</div>;
@@ -206,13 +221,33 @@ export default function PaymentsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Payments</h2>
-        <p className="text-slate-500">Track payments owed to your cleaners</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">
+            {mode === 'history' ? 'Payment history' : 'Payments'}
+          </h2>
+          <p className="text-slate-500">
+            {mode === 'history'
+              ? 'Overall payouts with per-apartment breakdown'
+              : 'Track payments owed to your cleaners'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {mode === 'history' ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/payments">Back</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/payments/payment-history">Payment history</Link>
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      {mode === 'payments' && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Owed</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
@@ -225,9 +260,9 @@ export default function PaymentsTab() {
               Across all cleaners
             </p>
           </CardContent>
-        </Card>
+          </Card>
 
-        <Card>
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cleaners</CardTitle>
             <User className="h-4 w-4 text-slate-600" />
@@ -238,9 +273,9 @@ export default function PaymentsTab() {
               Active cleaners
             </p>
           </CardContent>
-        </Card>
+          </Card>
 
-        <Card>
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
             <TrendingUp className="h-4 w-4 text-slate-600" />
@@ -251,11 +286,13 @@ export default function PaymentsTab() {
               Total cleanings
             </p>
           </CardContent>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
-      <Card>
-        <CardHeader>
+      {mode === 'payments' && (
+        <Card>
+          <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Payment Breakdown</CardTitle>
@@ -267,19 +304,19 @@ export default function PaymentsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Cleaners</SelectItem>
-                {cleaners.map((cleaner) => (
-                  <SelectItem key={cleaner.id} value={cleaner.id}>
-                    {cleaner.name}
+                {cleanerPayments.map((cp) => (
+                  <SelectItem key={cp.cleaner.id} value={cp.cleaner.id}>
+                    {cp.cleaner.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-        </CardHeader>
-        <CardContent>
+          </CardHeader>
+          <CardContent>
           {filteredPayments.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              No completed cleanings yet
+              No pending payments
             </div>
           ) : (
             <div className="space-y-6">
@@ -385,11 +422,12 @@ export default function PaymentsTab() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Payout History */}
-      <Card>
+      {mode === 'history' && (
+        <Card>
         <CardHeader>
           <CardTitle>Payout History</CardTitle>
           <CardDescription>Overall payments with per-apartment breakdown</CardDescription>
@@ -503,8 +541,10 @@ export default function PaymentsTab() {
           )}
         </CardContent>
       </Card>
+      )}
 
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+      {mode === 'payments' && (
+        <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Pay {activePayment?.cleaner.name}</DialogTitle>
@@ -581,6 +621,7 @@ export default function PaymentsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {selectedCleaning && (
         <CleaningDetailsDialog

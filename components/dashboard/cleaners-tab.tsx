@@ -36,12 +36,15 @@ export default function CleanersTab() {
       .from('cleaners')
       .select('*')
       .eq('host_id', user?.id)
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
 
     if (error) {
       toast.error('Failed to load cleaners');
     } else {
-      setCleaners(data || []);
+      const sorted = (data || []).slice().sort((a: any, b: any) =>
+        String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+      ) as Cleaner[];
+      setCleaners(sorted);
     }
     setLoading(false);
   };

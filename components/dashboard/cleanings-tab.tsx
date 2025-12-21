@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Calendar as CalendarIcon, MapPin, User, Clock, DollarSign, CheckCircle2, XCircle } from 'lucide-react';
 import CleaningDetailsDialog from './cleaning-details-dialog';
-import { format } from 'date-fns';
-import GanttCleanings from './gantt-cleanings';
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
+import GanttCleanings, { type DateRange } from './gantt-cleanings';
 
 type Property = {
   id: string;
@@ -49,10 +49,23 @@ export default function CleaningsTab() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('completed');
   const [selectedCleanerId, setSelectedCleanerId] = useState<string | 'all'>('all');
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const t = new Date();
+    return { from: subDays(t, 30), to: t };
+  });
 
   useEffect(() => {
+    if (!user) return;
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Re-fetch cleanings when the selected date range changes
+    loadCleanings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, dateRange.from, dateRange.to]);
 
   const loadData = async () => {
     setLoading(true);
@@ -65,21 +78,32 @@ export default function CleaningsTab() {
   };
 
   const loadCleanings = async () => {
-    const { data, error } = await supabase
+    setLoading(true);
+    const from = dateRange.from ? startOfDay(dateRange.from).toISOString() : null;
+    const to = dateRange.to ? endOfDay(dateRange.to).toISOString() : null;
+
+    let q = supabase
       .from('cleanings')
       .select(`
         *,
         property:properties(id, name, address, cleaner_rate_baht, floor, room_number),
         cleaner:cleaners(id, name)
       `)
-      .eq('status', 'completed')
-      .order('scheduled_date', { ascending: false });
+      .eq('status', 'completed');
+
+    // Apply server-side time window so we don't fetch all-time completed cleanings.
+    // For completed cleanings we expect completed_at to be present.
+    if (from) q = q.gte('completed_at', from);
+    if (to) q = q.lte('completed_at', to);
+
+    const { data, error } = await q.order('completed_at', { ascending: false });
 
     if (error) {
       toast.error('Failed to load cleanings');
     } else {
       setCleanings(data || []);
     }
+    setLoading(false);
   };
 
   const loadProperties = async () => {
@@ -150,6 +174,8 @@ export default function CleaningsTab() {
               properties={properties}
               cleanings={cleanings}
               cleaners={cleaners}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
               selectedCleanerId={selectedCleanerId}
               onSelectCleaner={setSelectedCleanerId}
               onUpdateCleanings={loadCleanings}
