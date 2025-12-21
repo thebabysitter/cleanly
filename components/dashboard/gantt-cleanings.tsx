@@ -238,8 +238,30 @@ export default function GanttCleanings({
     ];
   }, [filteredPropertiesList]);
 
+  const verticalScrollRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [endPadPx, setEndPadPx] = useState(0);
+  const panStateRef = useRef<{
+    active: boolean;
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    startScrollLeft: number;
+    didPan: boolean;
+    prevUserSelect: string;
+    prevCursor: string;
+  }>({
+    active: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startScrollLeft: 0,
+    didPan: false,
+    prevUserSelect: '',
+    prevCursor: '',
+  });
 
   useEffect(() => {
     // Sync header scroll with body scroll
@@ -253,16 +275,159 @@ export default function GanttCleanings({
     };
 
     body.addEventListener('scroll', handleScroll);
+
+    // Compute right padding so the maximum horizontal scroll lands exactly on a day-column boundary.
+    // This prevents "misaligned" vertical grid lines on initial load when the scroll ends mid-column.
+    const COL_WIDTH = 110;
+    const computeEndPad = () => {
+      if (!body) return;
+      const baseWidth = days.length * COL_WIDTH;
+      const client = body.clientWidth;
+      if (baseWidth <= client) {
+        setEndPadPx(0);
+        return;
+      }
+      const maxScrollLeft = Math.max(0, baseWidth - client);
+      const remainder = maxScrollLeft % COL_WIDTH;
+      const pad = (COL_WIDTH - remainder) % COL_WIDTH;
+      setEndPadPx(pad);
+    };
+
+    computeEndPad();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => computeEndPad());
+      ro.observe(body);
+    } else {
+      window.addEventListener('resize', computeEndPad);
+    }
     
-    // Also scroll to far right initially
+    // Auto-scroll to the far right initially so the most recent dates are visible.
+    // BUT if the selected range is small (e.g. "Today" => 1 column), scrolling to the
+    // far right can hide the only day column due to the min-width container.
     requestAnimationFrame(() => {
-      if (body) body.scrollLeft = body.scrollWidth;
+      if (!body) return;
+      const actualColsWidth = days.length * COL_WIDTH;
+      const shouldScrollToEnd = actualColsWidth > body.clientWidth;
+      if (!shouldScrollToEnd) {
+        body.scrollLeft = 0;
+        if (header) header.scrollLeft = 0;
+        return;
+      }
+
+      // With end padding applied, the true max scroll position should be column-aligned.
+      const maxScrollLeft = Math.max(0, body.scrollWidth - body.clientWidth);
+      body.scrollLeft = maxScrollLeft;
+      if (header) header.scrollLeft = maxScrollLeft;
     });
 
     return () => {
       body.removeEventListener('scroll', handleScroll);
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', computeEndPad);
     };
   }, [days.length]);
+
+  useEffect(() => {
+    // Click-and-drag panning (mouse/pen only) for easier navigation in big grids.
+    // Horizontal: scrollRef.scrollLeft
+    // Vertical: use normal scroll (wheel/trackpad/scrollbar); drag-to-pan is horizontal only.
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const DRAG_THRESHOLD_PX = 8;
+
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      const node = target as HTMLElement | null;
+      if (!node) return false;
+      return Boolean(
+        node.closest(
+          'button, a, input, textarea, select, option, [role="button"], [role="link"], [data-no-pan="true"]'
+        )
+      );
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      // Only left-click / primary button
+      if (typeof e.button === 'number' && e.button !== 0) return;
+      // Let touch devices use native scrolling
+      if (e.pointerType === 'touch') return;
+      // Don't start panning from interactive controls
+      if (isInteractiveTarget(e.target)) return;
+
+      const st = panStateRef.current;
+      st.active = true;
+      st.pointerId = e.pointerId;
+      st.startX = e.clientX;
+      st.startY = e.clientY;
+      st.startScrollLeft = el.scrollLeft;
+      st.didPan = false;
+
+      // Prevent text selection while dragging
+      st.prevUserSelect = document.body.style.userSelect;
+      st.prevCursor = document.body.style.cursor;
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // no-op
+      }
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      const st = panStateRef.current;
+      if (!st.active || st.pointerId !== e.pointerId) return;
+
+      const dx = e.clientX - st.startX;
+      const dy = e.clientY - st.startY;
+
+      if (!st.didPan) {
+        // Use Euclidean distance so small jitter doesn't count as a drag.
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+        st.didPan = true;
+      }
+
+      // Prevent browser selecting text / starting drag behaviors
+      e.preventDefault();
+
+      // Pan horizontally inside the grid
+      el.scrollLeft = st.startScrollLeft - dx;
+    };
+
+    const endPan = (e: PointerEvent) => {
+      const st = panStateRef.current;
+      if (!st.active || st.pointerId !== e.pointerId) return;
+
+      st.active = false;
+      st.pointerId = null;
+
+      // If we actually panned, suppress the next click so we don't open dialogs accidentally.
+      if (st.didPan) suppressNextClickRef.current = true;
+
+      document.body.style.userSelect = st.prevUserSelect;
+      document.body.style.cursor = st.prevCursor;
+
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        // no-op
+      }
+    };
+
+    el.addEventListener('pointerdown', onPointerDown);
+    el.addEventListener('pointermove', onPointerMove, { passive: false });
+    el.addEventListener('pointerup', endPan);
+    el.addEventListener('pointercancel', endPan);
+
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown);
+      el.removeEventListener('pointermove', onPointerMove as any);
+      el.removeEventListener('pointerup', endPan);
+      el.removeEventListener('pointercancel', endPan);
+    };
+  }, []);
 
   const datePresets = [
     { label: 'Today', from: today, to: today },
@@ -508,111 +673,27 @@ export default function GanttCleanings({
         </div>
       </div>
 
-      <div className="flex">
-        {/* Left column: properties (fixed, not horizontally scrollable) */}
-        <div className="w-[240px] shrink-0">
-          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
+      {/* Fixed chart workspace: internal vertical scroll so the chart stays in place */}
+      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+        {/* Header row (stays fixed while the body scrolls) */}
+        <div className="flex">
+          <div className="w-[240px] shrink-0 border-b border-slate-200 px-3 h-12 flex items-center font-semibold text-slate-700 tracking-wide">
             Properties
           </div>
-          {displayProperties.map((prop) => (
-            <div
-              key={prop.id}
-              className={`border-t border-slate-200 px-3 ${rowHeight} flex flex-col justify-center ${
-                prop.isTotal ? 'bg-slate-900 text-white' : 'bg-white text-slate-800'
-              }`}
-            >
-              <div className={`truncate ${prop.isTotal ? 'font-semibold text-base' : 'font-medium'}`} title={prop.name}>
-                {prop.name}
-                {!prop.isTotal && prop.room_number && <span className="font-normal text-slate-500 ml-1">- {prop.room_number}</span>}
-              </div>
-              <div className={`text-xs truncate ${prop.isTotal ? 'text-slate-200/80' : 'text-slate-500'}`}>
-                {prop.isTotal ? '' : ''}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Middle column: costs per property (fixed) */}
-        <div className="w-[200px] shrink-0 border-l border-r border-slate-200">
-          <div className="bg-white border-y border-slate-200 px-3 h-12 flex items-center justify-between text-xs font-semibold text-slate-700 tracking-wide sticky top-16 z-30">
+          <div className="w-[200px] shrink-0 border-b border-l border-r border-slate-200 px-3 h-12 flex items-center justify-between text-xs font-semibold text-slate-700 tracking-wide">
             <span>Costs</span>
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
               onClick={() => setShowDetailedCosts(!showDetailedCosts)}
-              title={showDetailedCosts ? "Show total only" : "Show detailed breakdown"}
+              title={showDetailedCosts ? 'Show total only' : 'Show detailed breakdown'}
             >
               {showDetailedCosts ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             </Button>
           </div>
-          {displayProperties.map((prop) => {
-            const totals = prop.isTotal
-              ? { cleaning: overallTotals.cleaning, transport: overallTotals.transport, other: overallTotals.other }
-              : totalsByProperty.get(prop.id) || {
-                  cleaning: 0,
-                  transport: 0,
-                  other: 0,
-                };
-            const count = prop.isTotal ? overallTotals.count : (countsByProperty.get(prop.id) || 0);
-            const totalAll = totals.cleaning + totals.transport + totals.other;
-            return (
-              <div
-                key={prop.id}
-                className={`border-t border-slate-200 px-3 text-xs space-y-1 ${rowHeight} flex flex-col justify-center rounded-r ${
-                  prop.isTotal ? 'bg-slate-100 font-semibold text-slate-900' : 'bg-white text-slate-700'
-                }`}
-              >
-                {showDetailedCosts ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">#</span>
-                      <span className="text-slate-900">
-                        {count}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">C</span>
-                      <span className="text-slate-900">
-                        ฿{Math.round(totals.cleaning).toLocaleString('en-US')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">T</span>
-                      <span className="text-slate-900">
-                        ฿{Math.round(totals.transport).toLocaleString('en-US')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-700">O</span>
-                      <span className="text-slate-900">
-                        ฿{Math.round(totals.other).toLocaleString('en-US')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-slate-900">
-                      <span className="font-bold tracking-wide uppercase text-[11px]">TOTAL</span>
-                      <span className="font-semibold text-base">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between text-slate-900">
-                    <span className="font-bold tracking-wide uppercase text-[11px]">Total ({count})</span>
-                    <span className="font-semibold text-sm">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Right side: horizontally scrollable days & cleanings */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Header row (sticky independently) */}
-          <div 
-            ref={headerRef}
-            className="sticky top-16 z-20 overflow-hidden bg-white border-y border-slate-200"
-          >
-            <div className="min-w-[900px]">
+          <div ref={headerRef} className="flex-1 min-w-0 overflow-hidden border-b border-slate-200 bg-white">
+            <div className="min-w-[900px]" style={{ paddingRight: endPadPx }}>
               <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
                 {days.map((day) => (
                   <div
@@ -626,18 +707,107 @@ export default function GanttCleanings({
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Body rows (scrollable) */}
-          <div className="overflow-x-auto" ref={scrollRef}>
-            <div className="min-w-[900px]">
-              {/* Body rows: one grid row per property */}
-              {displayProperties.map((prop) => (
+        {/* Body rows: scroll vertically inside the chart */}
+        <div
+          ref={verticalScrollRef}
+          className="flex overflow-y-auto items-start min-h-[420px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ height: 'calc(100vh - 320px)' }}
+        >
+          {/* Left column: properties */}
+          <div className="w-[240px] shrink-0">
+            {displayProperties.map((prop) => (
+              <div
+                key={prop.id}
+                className={`border-t border-slate-200 px-3 ${rowHeight} flex flex-col justify-center ${
+                  prop.isTotal ? 'bg-slate-900 text-white' : 'bg-white text-slate-800'
+                }`}
+              >
+                <div className={`truncate ${prop.isTotal ? 'font-semibold text-base' : 'font-medium'}`} title={prop.name}>
+                  {prop.name}
+                  {!prop.isTotal && prop.room_number && (
+                    <span className="font-normal text-slate-500 ml-1">- {prop.room_number}</span>
+                  )}
+                </div>
+                <div className={`text-xs truncate ${prop.isTotal ? 'text-slate-200/80' : 'text-slate-500'}`}>
+                  {prop.isTotal ? '' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Middle column: costs per property */}
+          <div className="w-[200px] shrink-0 border-l border-r border-slate-200">
+            {displayProperties.map((prop) => {
+              const totals = prop.isTotal
+                ? { cleaning: overallTotals.cleaning, transport: overallTotals.transport, other: overallTotals.other }
+                : totalsByProperty.get(prop.id) || { cleaning: 0, transport: 0, other: 0 };
+              const count = prop.isTotal ? overallTotals.count : (countsByProperty.get(prop.id) || 0);
+              const totalAll = totals.cleaning + totals.transport + totals.other;
+              return (
                 <div
                   key={prop.id}
-                  className={`grid ${prop.isTotal ? 'bg-slate-50/80' : ''}`}
-                  style={{ gridTemplateColumns: gridTemplate }}
+                  className={`border-t border-slate-200 px-3 text-xs space-y-1 ${rowHeight} flex flex-col justify-center rounded-r ${
+                    prop.isTotal ? 'bg-slate-100 font-semibold text-slate-900' : 'bg-white text-slate-700'
+                  }`}
                 >
-                  {days.map((day) => {
+                  {showDetailedCosts ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">#</span>
+                        <span className="text-slate-900">{count}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">C</span>
+                        <span className="text-slate-900">฿{Math.round(totals.cleaning).toLocaleString('en-US')}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">T</span>
+                        <span className="text-slate-900">฿{Math.round(totals.transport).toLocaleString('en-US')}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">O</span>
+                        <span className="text-slate-900">฿{Math.round(totals.other).toLocaleString('en-US')}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-slate-900">
+                        <span className="font-bold tracking-wide uppercase text-[11px]">TOTAL</span>
+                        <span className="font-semibold text-base">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between text-slate-900">
+                      <span className="font-bold tracking-wide uppercase text-[11px]">Total ({count})</span>
+                      <span className="font-semibold text-sm">฿{Math.round(totalAll).toLocaleString('en-US')}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right side: horizontally scrollable days & cleanings */}
+          <div className="flex-1 min-w-0">
+            <div
+              className="overflow-x-auto cursor-grab active:cursor-grabbing"
+              ref={scrollRef}
+              onClickCapture={(e) => {
+                if (suppressNextClickRef.current) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  suppressNextClickRef.current = false;
+                }
+              }}
+            >
+              <div className="min-w-[900px]" style={{ paddingRight: endPadPx }}>
+                {/* Body rows: one grid row per property */}
+                {displayProperties.map((prop) => (
+                  <div
+                    key={prop.id}
+                    className={`grid ${prop.isTotal ? 'bg-slate-50/80' : ''}`}
+                    style={{ gridTemplateColumns: gridTemplate }}
+                  >
+                    {days.map((day) => {
                     if (prop.isTotal) {
                       const key = format(day, 'yyyy-MM-dd');
                       const aggregate = dayTotals.get(key);
@@ -686,11 +856,12 @@ export default function GanttCleanings({
                             const amount = Math.round(c.amount ?? 0);
                             const transport = Math.round(c.transport_cost ?? 0);
                             return (
-                              <div
+                                <div
                                 key={c.id}
                                 className="absolute left-1 right-1 rounded-full text-white text-[11px] leading-4 shadow-sm px-2 py-1 cursor-pointer"
                                 style={{ top, backgroundColor: color }}
                                 title={`${prop.name} • Cleaning ฿${amount} • Transport ฿${transport}`}
+                                  data-no-pan="true"
                                 onClick={() => {
                                   setSelectedCleaning(c);
                                   setDetailsOpen(true);
@@ -707,19 +878,20 @@ export default function GanttCleanings({
                     }
                   })}
                 </div>
-              ))}
-
-              {/* legend */}
-              <div className="flex flex-wrap gap-3 mt-3">
-                {cleaners.map((cl) => (
-                  <div key={cl.id} className="flex items-center gap-2 text-sm text-slate-600">
-                    <span
-                      className="inline-block w-3 h-3 rounded"
-                      style={{ backgroundColor: getColorForCleaner(cl.id) }}
-                    />
-                    <span>{cl.name}</span>
-                  </div>
                 ))}
+
+                {/* legend */}
+                <div className="flex flex-wrap gap-3 mt-3 pb-3">
+                  {cleaners.map((cl) => (
+                    <div key={cl.id} className="flex items-center gap-2 text-sm text-slate-600">
+                      <span
+                        className="inline-block w-3 h-3 rounded"
+                        style={{ backgroundColor: getColorForCleaner(cl.id) }}
+                      />
+                      <span>{cl.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
