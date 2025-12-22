@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Calendar, User, MapPin, Clock, DollarSign, Image as ImageIcon, Video } from 'lucide-react';
 import { format } from 'date-fns';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 type Cleaning = {
   id: string;
@@ -223,11 +224,25 @@ export default function CleaningDetailsDialog({
     </Dialog>
     { /* Image/video preview dialog */ }
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto p-3 sm:p-4">
+        <DialogHeader>
+          <VisuallyHidden>
+            <DialogTitle>Media preview</DialogTitle>
+          </VisuallyHidden>
+        </DialogHeader>
         {previewItem?.media_type === 'image' ? (
-          <img src={previewItem.media_url} alt="Preview" className="w-full h-auto rounded-lg" />
+          <img
+            src={previewItem.media_url}
+            alt="Preview"
+            className="w-full max-h-[85vh] object-contain rounded-lg bg-black/5"
+          />
         ) : previewItem ? (
-          <video src={previewItem.media_url} className="w-full h-auto rounded-lg" controls autoPlay />
+          <video
+            src={previewItem.media_url}
+            className="w-full max-h-[85vh] rounded-lg bg-black/5"
+            controls
+            autoPlay
+          />
         ) : null}
       </DialogContent>
     </Dialog>
