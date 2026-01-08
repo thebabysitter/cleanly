@@ -96,7 +96,7 @@ function CleaningDetailsContent() {
 
   const compressImage = async (file: File): Promise<Blob> => {
     const bitmap = await createImageBitmap(file);
-    const MAX_DIM = 960;
+    const MAX_DIM = 720;
     let { width, height } = bitmap;
     if (width > MAX_DIM || height > MAX_DIM) {
       const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
@@ -111,12 +111,12 @@ function CleaningDetailsContent() {
     ctx.drawImage(bitmap, 0, 0, width, height);
 
     let blob: Blob | null = await new Promise((resolve) => {
-      canvas.toBlob((b) => resolve(b), 'image/webp', 0.6);
+      canvas.toBlob((b) => resolve(b), 'image/webp', 0.5);
     });
 
     if (!blob || !blob.type || blob.type === 'image/png') {
       blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.6)
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5)
       );
     }
 

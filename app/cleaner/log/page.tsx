@@ -118,11 +118,11 @@ export default function CleanerLogFormPage() {
         .single();
       if (insertErr) throw insertErr;
 
-      // helper: compress image to a reasonably small WebP (or JPEG fallback) using createImageBitmap
+      // helper: compress image to a small WebP (or JPEG fallback) using createImageBitmap
       const compressImage = async (file: File): Promise<Blob> => {
         const bitmap = await createImageBitmap(file);
-        // Stronger compression: smaller max dimension + slightly lower quality
-        const MAX_DIM = 960; // target max width/height in pixels
+        // Stronger compression (faster uploads on mobile): smaller max dimension + lower quality
+        const MAX_DIM = 720; // target max width/height in pixels
         let { width, height } = bitmap;
         if (width > MAX_DIM || height > MAX_DIM) {
           const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
@@ -138,15 +138,15 @@ export default function CleanerLogFormPage() {
 
         // Try WebP first
         let blob: Blob | null = await new Promise((resolve) => {
-          // quality ~0.6 for a good balance between size and clarity
-          canvas.toBlob((b) => resolve(b), 'image/webp', 0.6);
+          // Lower quality for smaller files (critical on mobile uplinks)
+          canvas.toBlob((b) => resolve(b), 'image/webp', 0.5);
         });
 
         // If WebP unsupported or failed, fall back to JPEG
         if (!blob || !blob.type || blob.type === 'image/png') {
           blob = await new Promise<Blob | null>((resolve) =>
             // use the same quality for JPEG fallback
-            canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.6)
+            canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.5)
           );
         }
 
