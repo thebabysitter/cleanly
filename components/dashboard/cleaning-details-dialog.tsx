@@ -7,8 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Calendar, User, MapPin, Clock, DollarSign, Image as ImageIcon, Video } from 'lucide-react';
+import { Calendar, User, MapPin, DollarSign, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
@@ -48,11 +59,11 @@ export default function CleaningDetailsDialog({
   onUpdate,
 }: CleaningDetailsDialogProps) {
   const [media, setMedia] = useState<Media[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [editingAmount, setEditingAmount] = useState(false);
   const [amountInput, setAmountInput] = useState<string>('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<Media | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open && cleaning) {
@@ -81,6 +92,20 @@ export default function CleaningDetailsDialog({
   };
 
   // View-only in this dialog: no upload or delete here
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('cleanings').delete().eq('id', cleaning.id);
+      if (error) throw error;
+      toast.success('Cleaning deleted');
+      onOpenChange(false);
+      onUpdate();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete cleaning');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -99,6 +124,40 @@ export default function CleaningDetailsDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          <div className="flex items-center justify-end">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  disabled={deleting}
+                >
+                  <Trash2 className="h-5 w-5" />
+                  <span className="sr-only">{deleting ? 'Deleting cleaning' : 'Delete cleaning'}</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this cleaning?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the cleaning and any linked media and payout records.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-slate-500 text-xs">Cleaning Date</Label>
@@ -207,8 +266,17 @@ export default function CleaningDetailsDialog({
                       )}
                     </div>
                     <div className="p-2 bg-white">
-                      <div className="text-xs text-slate-700 font-medium capitalize">
-                        {item.category || 'photo'}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-slate-700 font-medium capitalize">
+                          {item.category || 'photo'}
+                        </div>
+                        {item.category?.startsWith('receipt') &&
+                          typeof cleaning.transport_cost === 'number' &&
+                          cleaning.transport_cost > 0 && (
+                            <div className="text-xs font-semibold text-slate-900">
+                              ฿{Math.round(cleaning.transport_cost).toLocaleString()}
+                            </div>
+                          )}
                       </div>
                       <p className="text-xs text-slate-500">
                         {format(new Date(item.captured_at || item.uploaded_at), 'MMM d, h:mm a')}

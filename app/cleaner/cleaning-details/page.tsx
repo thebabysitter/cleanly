@@ -8,8 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Upload, Save, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Upload, Save, Loader2, ExternalLink, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 type CleaningDetail = {
@@ -33,6 +44,7 @@ function CleaningDetailsContent() {
   const [cleaning, setCleaning] = useState<CleaningDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const [transportCost1, setTransportCost1] = useState('');
   const [transportCost2, setTransportCost2] = useState('');
@@ -208,6 +220,21 @@ function CleaningDetailsContent() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!cleaning) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('cleanings').delete().eq('id', cleaning.id);
+      if (error) throw error;
+      toast.success('Cleaning deleted');
+      router.replace('/cleaner/cleanings');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete cleaning');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
   }
@@ -224,9 +251,42 @@ function CleaningDetailsContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 max-w-lg mx-auto">
-      <Button variant="outline" className="mb-3 gap-2" onClick={() => router.back()}>
-        <ArrowLeft className="w-4 h-4" /> Back
-      </Button>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => router.back()}>
+          <ArrowLeft className="w-4 h-4" /> Back
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              disabled={deleting}
+            >
+              <Trash2 className="h-5 w-5" />
+              <span className="sr-only">{deleting ? 'Deleting cleaning' : 'Delete cleaning'}</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this cleaning?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the cleaning and any linked media.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
       
       <Card className="mb-4">
         <CardHeader>
@@ -288,6 +348,20 @@ function CleaningDetailsContent() {
                     <a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="relative group block w-16 h-16 rounded overflow-hidden border border-slate-200">
                       <img src={r.url} alt="Receipt" className="object-cover w-full h-full" />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+                      {(() => {
+                        const cost =
+                          r.category === 'receipt_main'
+                            ? numericTransport1
+                            : r.category === 'receipt_extra'
+                              ? numericTransport2
+                              : 0;
+                        if (!cost) return null;
+                        return (
+                          <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            ฿{Math.round(cost).toLocaleString()}
+                          </div>
+                        );
+                      })()}
                       <ExternalLink className="absolute top-1 right-1 w-3 h-3 text-white drop-shadow-md" />
                     </a>
                   ))}
