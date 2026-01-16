@@ -348,20 +348,6 @@ function CleaningDetailsContent() {
                     <a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="relative group block w-16 h-16 rounded overflow-hidden border border-slate-200">
                       <img src={r.url} alt="Receipt" className="object-cover w-full h-full" />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                      {(() => {
-                        const cost =
-                          r.category === 'receipt_main'
-                            ? numericTransport1
-                            : r.category === 'receipt_extra'
-                              ? numericTransport2
-                              : 0;
-                        if (!cost) return null;
-                        return (
-                          <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            ฿{Math.round(cost).toLocaleString()}
-                          </div>
-                        );
-                      })()}
                       <ExternalLink className="absolute top-1 right-1 w-3 h-3 text-white drop-shadow-md" />
                     </a>
                   ))}

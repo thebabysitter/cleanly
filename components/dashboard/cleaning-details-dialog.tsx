@@ -270,13 +270,6 @@ export default function CleaningDetailsDialog({
                         <div className="text-xs text-slate-700 font-medium capitalize">
                           {item.category || 'photo'}
                         </div>
-                        {item.category?.startsWith('receipt') &&
-                          typeof cleaning.transport_cost === 'number' &&
-                          cleaning.transport_cost > 0 && (
-                            <div className="text-xs font-semibold text-slate-900">
-                              ฿{Math.round(cleaning.transport_cost).toLocaleString()}
-                            </div>
-                          )}
                       </div>
                       <p className="text-xs text-slate-500">
                         {format(new Date(item.captured_at || item.uploaded_at), 'MMM d, h:mm a')}

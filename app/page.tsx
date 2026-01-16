@@ -100,7 +100,7 @@ export default function Home() {
                       <div className="h-14 w-14 rounded-full bg-white/90 grid place-items-center">
                         <span className="ml-1 block h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] border-l-slate-900" />
                       </div>
-                      <span className="mt-3 text-sm font-medium text-white">Play demo</span>
+                      <span className="mt-3 text-sm font-medium text-black">Play demo</span>
                     </div>
                   </div>
                 </button>
@@ -109,13 +109,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Contact Section */}
-        <section id="contact" className="w-full max-w-2xl px-4 mt-10">
+       {/* Contact Section */}
+       <section id="contact" className="w-full max-w-2xl px-4 mt-10">
           <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-6 sm:p-8 shadow-sm">
             <div className="text-center">
               <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">Want access or have questions?</h2>
               <p className="text-slate-600 mt-2">
-
+                <span className="block mt-1">Send us a message on line: martindustfree</span>
+                <span className="block mt-1">or</span>
                 <span className="block mt-1">Send us an email on teamdustfree@gmail.com</span>
               </p>
               <div className="mt-5 flex justify-center">
@@ -126,6 +127,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+
       </main>
       
       {/* Footer (Simple) */}

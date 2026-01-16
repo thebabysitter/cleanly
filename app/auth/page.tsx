@@ -100,6 +100,24 @@ export default function AuthPage() {
           </form>
         </CardContent>
       </Card>
+              {/* Contact Section */}
+              <section id="contact" className="w-full max-w-2xl px-4 mt-10">
+          <div className="rounded-xl border border-slate-200 bg-white/70 backdrop-blur-sm p-6 sm:p-8 shadow-sm">
+            <div className="text-center">
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">Want access or have questions?</h2>
+              <p className="text-slate-600 mt-2">
+                <span className="block mt-1">Send us a message on line: martindustfree</span>
+                <span className="block mt-1">or</span>
+                <span className="block mt-1">Send us an email on teamdustfree@gmail.com</span>
+              </p>
+              <div className="mt-5 flex justify-center">
+                <Button asChild className="h-12 px-6">
+                  <a href="mailto:teamdustfree@gmail.com">Email us</a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
     </div>
   );
 }
