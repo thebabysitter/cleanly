@@ -40,6 +40,8 @@ type Cleaner = {
 
 type Cleaning = {
   id: string;
+  property_id: string;
+  cleaner_id: string;
   scheduled_date: string;
   completed_at?: string | null;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
