@@ -907,6 +907,7 @@ export default function GanttCleanings({
                   room_number: selectedCleaning.property.room_number ?? null
                 }
               }}
+          properties={properties.map((p) => ({ id: p.id, name: p.name, room_number: p.room_number ?? null }))}
           open={detailsOpen}
           onOpenChange={(o) => setDetailsOpen(o)}
           onUpdate={onUpdateCleanings || (() => {})}

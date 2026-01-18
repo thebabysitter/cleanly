@@ -27,12 +27,16 @@ type Cleaner = {
 
 type Cleaning = {
   id: string;
+  property_id: string;
+  cleaner_id: string;
   scheduled_date: string;
   completed_at: string | null;
   status: string;
   duration_hours: number | null;
   amount: number | null;
-  property: { name: string; room_number: string | null };
+  transport_cost: number | null;
+  notes: string | null;
+  property: { id: string; name: string; address: string; room_number: string | null };
   cleaner: { id: string; name: string };
 };
 
@@ -62,6 +66,7 @@ export default function PaymentsTab({ mode = 'payments' }: PaymentsTabProps) {
   const { user } = useAuth();
   const [cleaners, setCleaners] = useState<Cleaner[]>([]);
   const [cleanings, setCleanings] = useState<Cleaning[]>([]);
+  const [properties, setProperties] = useState<{ id: string; name: string; room_number?: string | null }[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedCleaning, setSelectedCleaning] = useState<Cleaning | null>(null);
@@ -80,7 +85,7 @@ export default function PaymentsTab({ mode = 'payments' }: PaymentsTabProps) {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([loadCleaners(), loadCleanings(), loadPayouts()]);
+    await Promise.all([loadCleaners(), loadProperties(), loadCleanings(), loadPayouts()]);
     setLoading(false);
   };
 
@@ -93,12 +98,21 @@ export default function PaymentsTab({ mode = 'payments' }: PaymentsTabProps) {
     setCleaners(data || []);
   };
 
+  const loadProperties = async () => {
+    const { data } = await supabase
+      .from('properties')
+      .select('id, name, room_number')
+      .eq('host_id', user?.id)
+      .order('name');
+    setProperties(data || []);
+  };
+
   const loadCleanings = async () => {
     const { data } = await supabase
       .from('cleanings')
       .select(`
         *,
-        property:properties(name, room_number),
+        property:properties(id, name, address, room_number),
         cleaner:cleaners(id, name)
       `)
       .eq('status', 'completed')
@@ -625,7 +639,8 @@ export default function PaymentsTab({ mode = 'payments' }: PaymentsTabProps) {
 
       {selectedCleaning && (
         <CleaningDetailsDialog
-          cleaning={selectedCleaning as any}
+          cleaning={selectedCleaning}
+          properties={properties}
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           onUpdate={async () => {

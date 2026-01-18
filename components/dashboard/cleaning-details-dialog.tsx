@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +24,8 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 type Cleaning = {
   id: string;
+  property_id: string;
+  cleaner_id: string;
   scheduled_date: string;
   completed_at?: string | null;
   status: string;
@@ -32,8 +33,8 @@ type Cleaning = {
   amount: number | null;
   transport_cost: number | null;
   notes: string | null;
-  property: { name: string; address: string; room_number: string | null };
-  cleaner: { name: string };
+  property: { id?: string; name: string; address: string; room_number: string | null };
+  cleaner: { id?: string; name: string };
 };
 
 type Media = {
@@ -47,6 +48,7 @@ type Media = {
 
 type CleaningDetailsDialogProps = {
   cleaning: Cleaning;
+  properties?: { id: string; name: string; room_number?: string | null }[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
@@ -54,22 +56,52 @@ type CleaningDetailsDialogProps = {
 
 export default function CleaningDetailsDialog({
   cleaning,
+  properties = [],
   open,
   onOpenChange,
   onUpdate,
 }: CleaningDetailsDialogProps) {
+  const propertyOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; room_number?: string | null }>();
+    for (const p of properties) map.set(p.id, p);
+    return Array.from(map.values());
+  }, [properties]);
+
   const [media, setMedia] = useState<Media[]>([]);
   const [editingAmount, setEditingAmount] = useState(false);
   const [amountInput, setAmountInput] = useState<string>('');
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [draft, setDraft] = useState<{
+    property_id: string;
+    amount: string;
+  }>({
+    property_id: '',
+    amount: '',
+  });
+
   useEffect(() => {
     if (open && cleaning) {
       loadMedia();
+      hydrateDraftFromCleaning();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cleaning]);
+
+  const hydrateDraftFromCleaning = () => {
+    const propertyId = cleaning.property_id || cleaning.property.id || '';
+    setDraft({
+      property_id: propertyId,
+      amount: cleaning.amount == null ? '' : String(Math.round(cleaning.amount)),
+    });
+    setEditingAmount(false);
+    setAmountInput('');
+    setEditMode(false);
+  };
 
   const loadMedia = async () => {
     const { data, error } = await supabase
@@ -88,6 +120,39 @@ export default function CleaningDetailsDialog({
         return da - db;
       });
       setMedia(sorted as any);
+    }
+  };
+
+  const handleSaveEdits = async () => {
+    setSaving(true);
+    try {
+      const amount = draft.amount.trim() === '' ? null : Math.max(0, Math.round(Number(draft.amount)));
+
+      if (amount != null && Number.isNaN(amount)) {
+        toast.error('Amount must be a number');
+        return;
+      }
+
+      const payload: any = {
+        amount,
+        property_id: draft.property_id,
+      };
+
+      const { error } = await supabase.from('cleanings').update(payload).eq('id', cleaning.id);
+      if (error) throw error;
+
+      // Keep dialog UI in sync immediately
+      setDraft((prev) => ({
+        ...prev,
+        amount: amount == null ? '' : String(amount),
+      }));
+      setEditMode(false);
+      setEditingAmount(false);
+      onUpdate();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update cleaning');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -124,7 +189,18 @@ export default function CleaningDetailsDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditMode((v) => !v)}
+                disabled={deleting || saving}
+              >
+                {editMode ? 'Cancel edits' : 'Edit cleaning'}
+              </Button>
+            </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
@@ -158,6 +234,64 @@ export default function CleaningDetailsDialog({
             </AlertDialog>
           </div>
 
+          {editMode && (
+            <div className="space-y-4 rounded-lg border border-slate-200 p-4 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Amount (฿)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={draft.amount}
+                    onChange={(e) => setDraft((p) => ({ ...p, amount: e.target.value }))}
+                    placeholder="e.g. 700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label>Property</Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm disabled:opacity-50"
+                    value={draft.property_id}
+                    onChange={(e) => {
+                      const nextPropertyId = e.target.value;
+                      const prop = propertyOptions.find((x) => x.id === nextPropertyId);
+                      setDraft((p) => ({
+                        ...p,
+                        property_id: nextPropertyId,
+                        // room is stored on the property record; label will show it
+                      }));
+                    }}
+                  >
+                    {propertyOptions.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.room_number ? ` (Room ${p.room_number})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={hydrateDraftFromCleaning}
+                  disabled={saving}
+                >
+                  Reset
+                </Button>
+                <Button type="button" onClick={handleSaveEdits} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save changes'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-slate-500 text-xs">Cleaning Date</Label>
@@ -181,14 +315,14 @@ export default function CleaningDetailsDialog({
             <div className="flex items-center gap-2 text-green-700 font-medium">
               <DollarSign className="w-5 h-5" />
               {!editingAmount ? (
-                <span className="text-lg">฿{(cleaning.amount ?? 0).toFixed(0)}</span>
+                <span className="text-lg">฿{(Number(draft.amount || cleaning.amount || 0) ?? 0).toFixed(0)}</span>
               ) : (
                 <input
                   className="h-8 w-28 rounded border border-green-300 bg-white px-2 text-green-700"
                   type="number"
                   step="1"
                   min="0"
-                  defaultValue={Math.round(cleaning.amount ?? 0)}
+                  defaultValue={Math.round(Number(draft.amount || cleaning.amount || 0))}
                   onChange={(e) => setAmountInput(e.target.value)}
                 />
               )}
@@ -197,7 +331,7 @@ export default function CleaningDetailsDialog({
                   className="ml-2 text-xs underline"
                   onClick={() => {
                     setEditingAmount(true);
-                    setAmountInput(String(Math.round(cleaning.amount ?? 0)));
+                    setAmountInput(String(Math.round(Number(draft.amount || cleaning.amount || 0))));
                   }}
                 >
                   Edit
@@ -212,7 +346,9 @@ export default function CleaningDetailsDialog({
                       .update({ amount: val })
                       .eq('id', cleaning.id);
                     if (!error) {
+                      setDraft((p) => ({ ...p, amount: String(val) }));
                       setEditingAmount(false);
+                      setAmountInput('');
                       onUpdate();
                     }
                   }}
@@ -221,21 +357,12 @@ export default function CleaningDetailsDialog({
                 </button>
               )}
             </div>
-            {typeof cleaning.transport_cost === 'number' && cleaning.transport_cost > 0 && (
+            {typeof (cleaning.transport_cost ?? null) === 'number' && (cleaning.transport_cost ?? 0) > 0 && (
               <p className="text-xs text-green-700 mt-1">
-                Includes transport: ฿{Math.round(cleaning.transport_cost).toLocaleString()}
+                Includes transport: ฿{Math.round(cleaning.transport_cost ?? 0).toLocaleString()}
               </p>
             )}
           </div>
-
-          {cleaning.notes && (
-            <div className="space-y-2">
-              <Label className="text-slate-500 text-xs">Notes</Label>
-              <p className="text-sm text-slate-700 p-3 bg-slate-50 rounded-lg">
-                {cleaning.notes}
-              </p>
-            </div>
-          )}
 
           <div className="space-y-4 border-t pt-4">
             <div className="flex items-center justify-between">

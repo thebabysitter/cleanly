@@ -28,6 +28,8 @@ type Cleaner = {
 
 type Cleaning = {
   id: string;
+  property_id: string;
+  cleaner_id: string;
   scheduled_date: string;
   completed_at?: string | null;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -44,7 +46,8 @@ export default function CleaningsTab() {
   const [cleanings, setCleanings] = useState<Cleaning[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [cleaners, setCleaners] = useState<Cleaner[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // initial load only
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedCleaning, setSelectedCleaning] = useState<Cleaning | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('completed');
@@ -63,7 +66,7 @@ export default function CleaningsTab() {
   useEffect(() => {
     if (!user) return;
     // Re-fetch cleanings when the selected date range changes
-    loadCleanings();
+    loadCleanings({ silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dateRange.from, dateRange.to]);
 
@@ -77,8 +80,8 @@ export default function CleaningsTab() {
     setLoading(false);
   };
 
-  const loadCleanings = async () => {
-    setLoading(true);
+  const loadCleanings = async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (silent) setRefreshing(true);
     const from = dateRange.from ? startOfDay(dateRange.from).toISOString() : null;
     const to = dateRange.to ? endOfDay(dateRange.to).toISOString() : null;
 
@@ -103,7 +106,7 @@ export default function CleaningsTab() {
     } else {
       setCleanings(data || []);
     }
-    setLoading(false);
+    if (silent) setRefreshing(false);
   };
 
   const loadProperties = async () => {
@@ -155,6 +158,9 @@ export default function CleaningsTab() {
 
   return (
     <div className="space-y-4">
+      {refreshing && (
+        <div className="text-xs text-slate-500">Refreshing…</div>
+      )}
 
       {properties.length === 0 || cleaners.length === 0 ? (
         <Card>
@@ -284,6 +290,7 @@ export default function CleaningsTab() {
                   room_number: selectedCleaning.property.room_number ?? null
                 }
               }}
+          properties={properties.map((p) => ({ id: p.id, name: p.name, room_number: p.room_number ?? null }))}
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           onUpdate={loadCleanings}
